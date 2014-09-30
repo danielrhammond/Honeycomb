@@ -8,7 +8,7 @@
 
 import UIKit
 
-let edgeLength:CGFloat = 20.0
+let edgeLength:CGFloat = 50.0
 
 class HoneycombLayout: UICollectionViewLayout {
     let nodeHeight:CGFloat = 2.0 * edgeLength
@@ -37,8 +37,20 @@ class HoneycombLayout: UICollectionViewLayout {
             let center = centerForIndexPath(indexPath)
             if true || CGRectContainsPoint(rect, center) {
                 var cell = UICollectionViewLayoutAttributes(forCellWithIndexPath: NSIndexPath(forItem: index, inSection: 0))
-                cell.center = center
-                cell.bounds = CGRect(origin: CGPointZero, size: CGSize(width: nodeWidth, height: nodeHeight))
+                
+                let offsetCenter = CGPoint(x: collectionView!.center.x + collectionView!.contentOffset.x, y: collectionView!.center.y + collectionView!.contentOffset.y)
+                let distance = sqrt(pow((center.x - offsetCenter.x), 2.0) + pow((center.y - offsetCenter.y), 2.0))
+                let unitVector = CGPoint(x: (offsetCenter.x - center.x)/distance, y: (offsetCenter.y - center.y)/distance)
+                let offset = 0.5 * fmin((distance / 200.0), 1.0)
+                let sizeMultiplier = 1.0 - offset
+                let centerOffset = 1.25 * sizeMultiplier
+                var cellCenter = CGPoint(x: center.x + (1.0-centerOffset)*distance*unitVector.x , y: center.y + (1.0-centerOffset)*distance*unitVector.y)
+                if isnan(cellCenter.x) || isnan(cellCenter.y) {
+                    cellCenter = CGPointZero
+                }
+                cell.center = cellCenter
+                println("distance=\(distance)")
+                cell.bounds = CGRect(origin: CGPointZero, size: CGSize(width: nodeWidth * sizeMultiplier, height: nodeHeight * sizeMultiplier))
                 attributes.append(cell)
             }
         };
@@ -71,7 +83,15 @@ class HoneycombLayout: UICollectionViewLayout {
         let collectionViewCenter = collectionView!.center
         return CGPoint(x: collectionViewCenter.x + center.x, y: collectionViewCenter.y + center.y)
     }
+    
+    override func shouldInvalidateLayoutForBoundsChange(newBounds: CGRect) -> Bool {
+        return true
+    }
 
+    override func collectionViewContentSize() -> CGSize {
+        return CGSize(width: CGRectGetWidth(collectionView!.bounds) * 2.0, height: CGRectGetHeight(collectionView!.bounds) * 2.0)
+    }
+    
     func hexagonalRing(indexPath:NSIndexPath, n:Int) -> [NSIndexPath] {
         func northEastNeighbor(indexPath:NSIndexPath) -> NSIndexPath {
             return NSIndexPath(forItem: indexPath.item - 1, inSection: indexPath.section + 1)
